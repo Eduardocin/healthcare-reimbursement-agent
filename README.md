@@ -1,23 +1,40 @@
 # Agente Inteligente de Reembolso
 
-Projeto de IA aplicado à análise de solicitações de reembolso em saúde. A solução combina arquitetura multiagente, leitura de documentos, consulta cadastral via MCP, recuperação híbrida de normas e cálculo determinístico das regras de negócio.
+**Sistema conversacional multiagente para análise de reembolsos em saúde, com interpretação de documentos, consulta cadastral, RAG híbrido e cálculo determinístico.**
 
-> Projeto educacional com dados fictícios. Não deve ser utilizado para decisões reais de saúde ou cobertura sem revisão humana e controles adequados à LGPD.
+`Python 3.11` · `FastAPI` · `LangGraph` · `LlamaIndex` · `MCP` · `Pydantic` · `Docker`
 
-[Explorar o código](./reembolso-bootcamp-2026/) · [Documentação completa](./reembolso-bootcamp-2026/README.md) · [Testes](./reembolso-bootcamp-2026/tests/)
+[Ver código-fonte](./reembolso-bootcamp-2026/) · [Documentação técnica](./reembolso-bootcamp-2026/README.md) · [Suíte de testes](./reembolso-bootcamp-2026/tests/)
 
-## Destaques
+## Visão geral
 
-- supervisor e handoffs explícitos implementados com LangGraph;
-- agentes especializados em triagem, documentos e normas;
-- memória conversacional isolada por `session_id`;
-- integração com a operadora por Model Context Protocol;
-- leitura de PDFs e imagens com extração estruturada e OCR;
-- RAG híbrido com vector store, BM25, busca exata, RRF e reranqueamento;
-- cálculo financeiro determinístico com `Decimal`;
-- guardrails para CPF, CID e solicitações envolvendo terceiros;
-- API FastAPI tipada com Pydantic;
-- suíte automatizada com 37 testes.
+Solicitações de reembolso exigem combinar informações que chegam em momentos diferentes: identificação do beneficiário, documentos fiscais, histórico de utilização, regras contratuais e limites financeiros.
+
+Este projeto transforma esse fluxo em uma API conversacional capaz de:
+
+- manter o contexto entre diferentes turnos;
+- encaminhar cada etapa para um agente especialista;
+- interpretar recibos, notas fiscais, relatórios e imagens;
+- consultar cadastro e histórico em um servidor MCP;
+- recuperar evidências de uma base normativa;
+- calcular decisões e valores de forma reproduzível;
+- proteger dados pessoais e informações clínicas na resposta.
+
+Os dados e documentos usados na demonstração são sintéticos.
+
+## Competências demonstradas
+
+| Competência | Implementação |
+|---|---|
+| Arquitetura de agentes | Supervisor LangGraph com handoffs explícitos para triagem, documentos e normas |
+| Engenharia de RAG | Busca vetorial + BM25 + busca por dispositivo + Reciprocal Rank Fusion |
+| Integração de sistemas | Cliente e servidor Model Context Protocol com autenticação |
+| Document AI | Extração de PDF e imagem com PyMuPDF, Pillow e Tesseract OCR |
+| Regras de negócio | Motor determinístico com `Decimal`, datas, tetos e coparticipação |
+| Dados estruturados | Contratos e validação de fronteira com Pydantic |
+| Privacidade | Guardrails para CPF, CID, carteirinha e solicitações sobre terceiros |
+| Qualidade | 37 testes automatizados, tipagem e dependências fixadas |
+| Entrega | API FastAPI conteinerizada com Docker Compose |
 
 ## Arquitetura
 
@@ -46,109 +63,121 @@ flowchart LR
     G --> API
 ```
 
-O modelo de linguagem é usado onde interpretação semântica agrega valor. Validação, cálculo monetário, limites, coparticipação, carência e transições previsíveis permanecem em código determinístico.
+## Decisões técnicas
 
-## Tecnologias
+### Multiagente com responsabilidades claras
+
+O supervisor não tenta resolver tudo sozinho. Ele preserva o estado da sessão e transfere o trabalho para agentes especializados:
+
+- **Triagem:** identificação, elegibilidade e histórico do beneficiário;
+- **Documentos:** classificação e extração de campos do anexo;
+- **Normas:** recuperação e interpretação de evidências regulatórias.
+
+### IA para interpretação, código para garantias
+
+O modelo de linguagem é usado nas tarefas semânticas. Cálculo monetário, validação, limites, carência, coparticipação e transições previsíveis permanecem em código determinístico.
+
+Isso reduz respostas inventadas e torna os resultados financeiros testáveis.
+
+### RAG híbrido
+
+A recuperação combina:
+
+- similaridade vetorial para contexto semântico;
+- BM25 para correspondência lexical;
+- busca exata por artigos, circulares e códigos TUSS;
+- fusão de rankings e reranqueamento por autoridade e vigência da norma.
+
+### Privacidade desde a arquitetura
+
+A aplicação não apenas orienta o modelo por prompt. Também aplica verificações determinísticas para impedir exposição de CPF, CID e dados de terceiros.
+
+## Fluxo de uma solicitação
+
+1. A API recebe uma mensagem e um anexo opcional.
+2. O estado da conversa é recuperado pelo `session_id`.
+3. O supervisor seleciona o agente responsável pelo turno.
+4. Cadastro, documentos e normas são consolidados no estado.
+5. O motor determinístico calcula a decisão quando existem dados suficientes.
+6. Os guardrails sanitizam a resposta antes do retorno ao cliente.
+
+## Stack
 
 | Área | Tecnologias |
 |---|---|
-| Linguagem e API | Python 3.11, FastAPI, Uvicorn, Pydantic |
+| API | Python 3.11, FastAPI, Uvicorn, Pydantic |
 | Agentes | LangGraph, LangChain |
 | IA generativa | Gemini 2.5 Flash Lite por gateway compatível |
-| RAG | LlamaIndex, vector store embarcado, BM25, RRF |
+| Recuperação | LlamaIndex, vector store embarcado, BM25, RRF |
 | Documentos | PyMuPDF, Pillow, Tesseract OCR, python-docx |
 | Integração | Model Context Protocol, HTTPX |
 | Qualidade | pytest, unittest, configuração Pyright |
 | Infraestrutura | Docker e Docker Compose |
 
-## Fluxo de processamento
+## API
 
-1. A API recebe a mensagem e um anexo opcional.
-2. O supervisor recupera o estado da sessão e escolhe o agente especialista.
-3. A triagem consulta cadastro e histórico pelo MCP.
-4. O agente documental classifica e extrai dados do comprovante.
-5. O agente de normas recupera evidências da base de conhecimento.
-6. O motor determinístico calcula elegibilidade, decisão e valores.
-7. Os guardrails sanitizam a resposta antes de devolvê-la ao cliente.
+```http
+GET  /health
+POST /chat
+POST /reset
+```
 
-## Como executar
+Exemplo de turno:
 
-Entre no diretório do projeto:
+```json
+{
+  "session_id": "portfolio-demo",
+  "mensagem": "Quero solicitar o reembolso de uma consulta",
+  "anexo": null
+}
+```
+
+A resposta pode incluir categoria documental, decisão, valor solicitado, valor calculado, regras aplicadas, protocolo e pendências.
+
+## Qualidade e validação
+
+A suíte automatizada cobre:
+
+- cálculo e regras de negócio;
+- contratos HTTP;
+- persistência e isolamento das sessões;
+- roteamento e handoffs do grafo;
+- extração documental;
+- recuperação híbrida;
+- cliente MCP;
+- privacidade e sanitização.
+
+Resultado atual: **37 testes aprovados**.
+
+## Executar o projeto
 
 ```bash
 cd reembolso-bootcamp-2026
-```
-
-Crie o arquivo de configuração:
-
-```bash
 cp .env.example .env
-```
-
-No PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Preencha no `.env` as variáveis `BOOTCAMP_LLM_ENDPOINT` e `BOOTCAMP_API_KEY`. Credenciais reais nunca devem ser adicionadas ao Git.
-
-Suba a aplicação e o servidor MCP:
-
-```bash
 docker compose up --build
 ```
 
-Serviços disponíveis:
+Após configurar as credenciais locais:
 
 - API: `http://localhost:8000`;
 - Swagger UI: `http://localhost:8000/docs`;
 - MCP: `http://localhost:9000/mcp`.
 
-Teste a saúde da API:
+A instalação local, as variáveis de ambiente, os exemplos completos e a reconstrução da base RAG estão na [documentação técnica](./reembolso-bootcamp-2026/README.md).
 
-```bash
-curl http://localhost:8000/health
-```
-
-## Exemplo de uso
-
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_id": "exemplo-01",
-    "mensagem": "Quero solicitar um reembolso"
-  }'
-```
-
-A resposta pode incluir categoria documental, decisão, valores calculados, regras aplicadas, protocolo e pendências.
-
-## Testes
-
-```bash
-cd reembolso-bootcamp-2026
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-```
-
-A suíte cobre cálculo, contratos HTTP, privacidade, integração MCP, persistência da sessão, roteamento do grafo, documentos e recuperação híbrida.
-
-## Organização
+## Estrutura principal
 
 ```text
 reembolso-bootcamp-2026/
-├── app/                 # API, grafo, agentes, RAG, cálculo e guardrails
+├── app/                 # API, agentes, RAG, cálculo e guardrails
 ├── ingest/              # construção dos índices
 ├── kb/                  # base normativa
 ├── storage/             # índices persistidos
-├── mcp/                 # simulador da operadora
-├── casos_treino/        # cenários fictícios
-├── anexos/treino/       # documentos fictícios
+├── mcp/                 # integração simulada com a operadora
+├── casos_treino/        # cenários sintéticos
+├── anexos/treino/       # documentos sintéticos
 └── tests/               # testes automatizados
 ```
-
-Consulte a [documentação detalhada](./reembolso-bootcamp-2026/README.md) para instalação local sem Docker, contratos completos da API, configuração, reconstrução do índice RAG e limitações conhecidas.
 
 ## Licença
 
