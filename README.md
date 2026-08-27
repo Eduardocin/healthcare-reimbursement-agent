@@ -1,118 +1,120 @@
-# Agente Inteligente de Reembolso
+# AI-Powered Healthcare Reimbursement Agent
 
-**Sistema conversacional multiagente para análise de reembolsos em saúde, com interpretação de documentos, consulta cadastral, RAG híbrido e cálculo determinístico.**
+**A multi-agent conversational system for healthcare reimbursement analysis, combining document understanding, eligibility checks, hybrid RAG, and deterministic financial rules.**
 
 `Python 3.11` · `FastAPI` · `LangGraph` · `LlamaIndex` · `MCP` · `Pydantic` · `Docker`
 
-[Ver código-fonte](./reembolso-bootcamp-2026/) · [Documentação técnica](./reembolso-bootcamp-2026/README.md) · [Suíte de testes](./reembolso-bootcamp-2026/tests/)
+Built during the **Triggo.ai AI Engineering Bootcamp**.
 
-## Visão geral
+[Explore the source code](./reembolso-bootcamp-2026/) · [Technical documentation](./reembolso-bootcamp-2026/README.md) · [Test suite](./reembolso-bootcamp-2026/tests/)
 
-Solicitações de reembolso exigem combinar informações que chegam em momentos diferentes: identificação do beneficiário, documentos fiscais, histórico de utilização, regras contratuais e limites financeiros.
+## Overview
 
-Este projeto transforma esse fluxo em uma API conversacional capaz de:
+Healthcare reimbursement requests require information that often arrives across multiple interactions: member identification, invoices, clinical documents, usage history, policy rules, and financial limits.
 
-- manter o contexto entre diferentes turnos;
-- encaminhar cada etapa para um agente especialista;
-- interpretar recibos, notas fiscais, relatórios e imagens;
-- consultar cadastro e histórico em um servidor MCP;
-- recuperar evidências de uma base normativa;
-- calcular decisões e valores de forma reproduzível;
-- proteger dados pessoais e informações clínicas na resposta.
+This project turns that workflow into a conversational API capable of:
 
-Os dados e documentos usados na demonstração são sintéticos.
+- preserving context across multiple turns;
+- routing each step to a specialized agent;
+- interpreting receipts, invoices, reports, and images;
+- querying member data and reimbursement history through MCP;
+- retrieving evidence from a regulatory knowledge base;
+- calculating decisions and reimbursement amounts reproducibly;
+- protecting personal and clinical data in the final response.
 
-## Competências demonstradas
+All demonstration data and documents are synthetic.
 
-| Competência | Implementação |
+## What this project demonstrates
+
+| Capability | Implementation |
 |---|---|
-| Arquitetura de agentes | Supervisor LangGraph com handoffs explícitos para triagem, documentos e normas |
-| Engenharia de RAG | Busca vetorial + BM25 + busca por dispositivo + Reciprocal Rank Fusion |
-| Integração de sistemas | Cliente e servidor Model Context Protocol com autenticação |
-| Document AI | Extração de PDF e imagem com PyMuPDF, Pillow e Tesseract OCR |
-| Regras de negócio | Motor determinístico com `Decimal`, datas, tetos e coparticipação |
-| Dados estruturados | Contratos e validação de fronteira com Pydantic |
-| Privacidade | Guardrails para CPF, CID, carteirinha e solicitações sobre terceiros |
-| Qualidade | 37 testes automatizados, tipagem e dependências fixadas |
-| Entrega | API FastAPI conteinerizada com Docker Compose |
+| Agent architecture | LangGraph supervisor with explicit handoffs to triage, document, and policy agents |
+| RAG engineering | Vector search + BM25 + exact rule lookup + Reciprocal Rank Fusion |
+| Systems integration | Authenticated Model Context Protocol client and server |
+| Document AI | PDF and image extraction with PyMuPDF, Pillow, and Tesseract OCR |
+| Business rules | Deterministic engine using `Decimal`, dates, coverage limits, and copay rules |
+| Structured data | Boundary validation and typed contracts with Pydantic |
+| Privacy | Guardrails for tax IDs, diagnosis codes, membership IDs, and third-party requests |
+| Software quality | 37 automated tests, type-checking configuration, and pinned dependencies |
+| Delivery | Containerized FastAPI application orchestrated with Docker Compose |
 
-## Arquitetura
+## Architecture
 
 ```mermaid
 flowchart LR
-    U[Cliente] --> API[FastAPI]
-    API --> RT[Runtime e memória por sessão]
-    RT --> S[Supervisor LangGraph]
+    U[Client] --> API[FastAPI]
+    API --> RT[Runtime and session memory]
+    RT --> S[LangGraph Supervisor]
 
-    S --> T[Agente de triagem]
-    T --> MCP[Servidor MCP da operadora]
+    S --> T[Triage Agent]
+    T --> MCP[Healthcare Provider MCP Server]
 
-    S --> D[Agente de documentos]
-    D --> EXT[PDF · imagem · OCR]
+    S --> D[Document Agent]
+    D --> EXT[PDF · Image · OCR]
 
-    S --> N[Agente de normas]
-    N --> RAG[RAG híbrido]
-    RAG --> VS[Vector store]
-    RAG --> BM[BM25 + busca exata]
+    S --> N[Policy Agent]
+    N --> RAG[Hybrid RAG]
+    RAG --> VS[Vector Store]
+    RAG --> BM[BM25 + Exact Lookup]
 
     T --> S
     D --> S
     N --> S
-    S --> C[Motor determinístico]
-    C --> G[Guardrails de privacidade]
+    S --> C[Deterministic Rules Engine]
+    C --> G[Privacy Guardrails]
     G --> API
 ```
 
-## Decisões técnicas
+## Key technical decisions
 
-### Multiagente com responsabilidades claras
+### Specialized agents with explicit responsibilities
 
-O supervisor não tenta resolver tudo sozinho. Ele preserva o estado da sessão e transfere o trabalho para agentes especializados:
+The supervisor does not attempt to solve the entire workflow by itself. It preserves the session state and delegates work to dedicated agents:
 
-- **Triagem:** identificação, elegibilidade e histórico do beneficiário;
-- **Documentos:** classificação e extração de campos do anexo;
-- **Normas:** recuperação e interpretação de evidências regulatórias.
+- **Triage:** member identification, eligibility, and reimbursement history;
+- **Documents:** attachment classification and structured field extraction;
+- **Policy:** retrieval and interpretation of regulatory evidence.
 
-### IA para interpretação, código para garantias
+### AI for interpretation, code for guarantees
 
-O modelo de linguagem é usado nas tarefas semânticas. Cálculo monetário, validação, limites, carência, coparticipação e transições previsíveis permanecem em código determinístico.
+The language model handles semantic tasks. Monetary calculations, validation, waiting periods, coverage limits, copay rules, and predictable state transitions remain deterministic.
 
-Isso reduz respostas inventadas e torna os resultados financeiros testáveis.
+This separation reduces hallucinations and makes financial outcomes testable.
 
-### RAG híbrido
+### Hybrid retrieval
 
-A recuperação combina:
+The retrieval pipeline combines:
 
-- similaridade vetorial para contexto semântico;
-- BM25 para correspondência lexical;
-- busca exata por artigos, circulares e códigos TUSS;
-- fusão de rankings e reranqueamento por autoridade e vigência da norma.
+- vector similarity for semantic context;
+- BM25 for lexical relevance;
+- exact lookup for policy articles, circulars, and procedure codes;
+- rank fusion and reranking based on authority and effective date.
 
-### Privacidade desde a arquitetura
+### Privacy by design
 
-A aplicação não apenas orienta o modelo por prompt. Também aplica verificações determinísticas para impedir exposição de CPF, CID e dados de terceiros.
+Privacy is not enforced through prompting alone. Deterministic checks also prevent the disclosure of tax IDs, diagnosis codes, membership IDs, and third-party data.
 
-## Fluxo de uma solicitação
+## Request flow
 
-1. A API recebe uma mensagem e um anexo opcional.
-2. O estado da conversa é recuperado pelo `session_id`.
-3. O supervisor seleciona o agente responsável pelo turno.
-4. Cadastro, documentos e normas são consolidados no estado.
-5. O motor determinístico calcula a decisão quando existem dados suficientes.
-6. Os guardrails sanitizam a resposta antes do retorno ao cliente.
+1. The API receives a message and an optional attachment.
+2. Conversation state is restored using the `session_id`.
+3. The supervisor selects the appropriate specialist for the turn.
+4. Member data, document fields, and policy evidence are consolidated.
+5. The deterministic engine calculates the outcome when enough data is available.
+6. Privacy guardrails sanitize the response before it reaches the client.
 
-## Stack
+## Tech stack
 
-| Área | Tecnologias |
+| Area | Technologies |
 |---|---|
 | API | Python 3.11, FastAPI, Uvicorn, Pydantic |
-| Agentes | LangGraph, LangChain |
-| IA generativa | Gemini 2.5 Flash Lite por gateway compatível |
-| Recuperação | LlamaIndex, vector store embarcado, BM25, RRF |
-| Documentos | PyMuPDF, Pillow, Tesseract OCR, python-docx |
-| Integração | Model Context Protocol, HTTPX |
-| Qualidade | pytest, unittest, configuração Pyright |
-| Infraestrutura | Docker e Docker Compose |
+| Agents | LangGraph, LangChain |
+| Generative AI | Gemini 2.5 Flash Lite through a compatible gateway |
+| Retrieval | LlamaIndex, embedded vector store, BM25, RRF |
+| Documents | PyMuPDF, Pillow, Tesseract OCR, python-docx |
+| Integration | Model Context Protocol, HTTPX |
+| Quality | pytest, unittest, Pyright configuration |
+| Infrastructure | Docker and Docker Compose |
 
 ## API
 
@@ -122,34 +124,36 @@ POST /chat
 POST /reset
 ```
 
-Exemplo de turno:
+Example request:
 
 ```json
 {
   "session_id": "portfolio-demo",
-  "mensagem": "Quero solicitar o reembolso de uma consulta",
+  "mensagem": "I want to request reimbursement for a medical appointment",
   "anexo": null
 }
 ```
 
-A resposta pode incluir categoria documental, decisão, valor solicitado, valor calculado, regras aplicadas, protocolo e pendências.
+The structured response may include document category, decision, requested amount, calculated reimbursement, applied rules, protocol number, and pending requirements.
 
-## Qualidade e validação
+> The request and response field names remain in Portuguese to preserve the original API contract.
 
-A suíte automatizada cobre:
+## Quality and validation
 
-- cálculo e regras de negócio;
-- contratos HTTP;
-- persistência e isolamento das sessões;
-- roteamento e handoffs do grafo;
-- extração documental;
-- recuperação híbrida;
-- cliente MCP;
-- privacidade e sanitização.
+The automated suite covers:
 
-Resultado atual: **37 testes aprovados**.
+- financial calculations and business rules;
+- HTTP contracts;
+- session persistence and isolation;
+- graph routing and agent handoffs;
+- document extraction;
+- hybrid retrieval;
+- MCP integration;
+- privacy and response sanitization.
 
-## Executar o projeto
+Current result: **37 tests passing**.
+
+## Run the project
 
 ```bash
 cd reembolso-bootcamp-2026
@@ -157,28 +161,28 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Após configurar as credenciais locais:
+After configuring the local credentials:
 
 - API: `http://localhost:8000`;
 - Swagger UI: `http://localhost:8000/docs`;
-- MCP: `http://localhost:9000/mcp`.
+- MCP server: `http://localhost:9000/mcp`.
 
-A instalação local, as variáveis de ambiente, os exemplos completos e a reconstrução da base RAG estão na [documentação técnica](./reembolso-bootcamp-2026/README.md).
+Local installation, environment variables, complete API examples, and RAG index reconstruction are covered in the [technical documentation](./reembolso-bootcamp-2026/README.md).
 
-## Estrutura principal
+## Project structure
 
 ```text
 reembolso-bootcamp-2026/
-├── app/                 # API, agentes, RAG, cálculo e guardrails
-├── ingest/              # construção dos índices
-├── kb/                  # base normativa
-├── storage/             # índices persistidos
-├── mcp/                 # integração simulada com a operadora
-├── casos_treino/        # cenários sintéticos
-├── anexos/treino/       # documentos sintéticos
-└── tests/               # testes automatizados
+├── app/                 # API, agents, RAG, rules engine, and guardrails
+├── ingest/              # index construction pipeline
+├── kb/                  # regulatory knowledge base
+├── storage/             # persisted retrieval indexes
+├── mcp/                 # simulated healthcare provider integration
+├── casos_treino/        # synthetic conversation scenarios
+├── anexos/treino/       # synthetic documents
+└── tests/               # automated test suite
 ```
 
-## Licença
+## License
 
-Distribuído sob a [licença MIT](./LICENSE).
+Distributed under the [MIT License](./LICENSE).
