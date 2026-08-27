@@ -1,159 +1,159 @@
-# Agente Inteligente de Reembolso
+# AI-Powered Healthcare Reimbursement Agent
 
-API conversacional para análise de solicitações de reembolso em saúde. O projeto combina uma arquitetura multiagente, consulta cadastral via MCP, leitura de documentos, recuperação híbrida de normas e um motor determinístico para calcular a decisão e o valor do reembolso.
+A conversational API for healthcare reimbursement analysis. The project combines multi-agent orchestration, member data retrieval through MCP, document understanding, hybrid policy retrieval, and a deterministic engine for reimbursement decisions and calculations.
 
-> Projeto educacional. Os dados dos casos de treino são fictícios e a aplicação não deve ser usada para decisões reais de saúde ou de cobertura sem revisão humana, controles operacionais e adequação à LGPD.
+Built during the **Triggo.ai AI Engineering Bootcamp**.
 
-## Principais recursos
+> Portfolio project using synthetic members and documents. It is not intended for real healthcare or coverage decisions without human review, production controls, and applicable privacy compliance.
 
-- orquestração explícita de agentes com LangGraph;
-- memória de conversa isolada por `session_id`;
-- triagem e consulta de beneficiários por um servidor MCP local;
-- leitura de PDF e imagem com PyMuPDF, Pillow e Tesseract OCR;
-- extração estruturada e validação com Pydantic;
-- RAG híbrido com busca vetorial, BM25, Reciprocal Rank Fusion e reranqueamento por autoridade normativa;
-- cálculo financeiro determinístico com `Decimal`;
-- guardrails contra exposição de CPF, CID e dados de terceiros;
-- API FastAPI com contratos tipados e documentação OpenAPI;
-- execução local ou com Docker Compose.
+## Core capabilities
 
-## Arquitetura
+- explicit multi-agent orchestration with LangGraph;
+- isolated conversation memory for each `session_id`;
+- member eligibility and reimbursement history through a local MCP server;
+- PDF and image processing with PyMuPDF, Pillow, and Tesseract OCR;
+- structured extraction and boundary validation with Pydantic;
+- hybrid RAG using vector search, BM25, Reciprocal Rank Fusion, and policy-aware reranking;
+- deterministic financial calculations using `Decimal`;
+- privacy guardrails for tax IDs, diagnosis codes, membership IDs, and third-party requests;
+- typed FastAPI contracts and OpenAPI documentation;
+- local and containerized execution.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    U[Cliente] --> API[FastAPI<br/>/health · /chat · /reset]
-    API --> RT[Runtime + memória por sessão]
-    RT --> S[Supervisor LangGraph]
+    U[Client] --> API[FastAPI<br/>/health · /chat · /reset]
+    API --> RT[Runtime + session memory]
+    RT --> S[LangGraph Supervisor]
 
-    S --> T[Agente de triagem]
-    T --> MCP[Servidor MCP da operadora]
+    S --> T[Triage Agent]
+    T --> MCP[Healthcare Provider MCP Server]
 
-    S --> D[Agente de documentos]
-    D --> EXT[PDF · imagem · OCR<br/>extração estruturada]
+    S --> D[Document Agent]
+    D --> EXT[PDF · Image · OCR<br/>Structured Extraction]
 
-    S --> N[Agente de normas]
-    N --> RAG[RAG híbrido]
-    RAG --> V[Vector store embarcado]
-    RAG --> B[BM25 + busca exata]
+    S --> N[Policy Agent]
+    N --> RAG[Hybrid RAG]
+    RAG --> V[Embedded Vector Store]
+    RAG --> B[BM25 + Exact Lookup]
 
     T --> S
     D --> S
     N --> S
-    S --> C[Motor determinístico de cálculo]
-    C --> G[Guardrails de privacidade]
+    S --> C[Deterministic Rules Engine]
+    C --> G[Privacy Guardrails]
     G --> API
 ```
 
-O supervisor escolhe o especialista adequado a cada turno e consolida os fatos retornados. Regras de negócio como tetos, coparticipação, carência, limite anual e escalonamento são executadas em código, sem delegar aritmética ao modelo de linguagem.
+The supervisor selects the appropriate specialist for each turn and consolidates validated facts. Coverage limits, copay rates, waiting periods, annual limits, and escalation rules are executed in deterministic code instead of being delegated to the language model.
 
-### Componentes
+### Components
 
-| Componente | Responsabilidade |
+| Component | Responsibility |
 |---|---|
-| `app/main.py` | Expõe a API HTTP e valida as requisições. |
-| `app/agents/supervisor/` | Mantém o estado da sessão, faz handoffs e consolida a resposta. |
-| `app/agents/triagem/` | Valida a carteirinha e consulta cadastro e histórico pelo MCP. |
-| `app/agents/documento/` | Classifica anexos e extrai os campos necessários. |
-| `app/agents/normas/` | Recupera evidências da base normativa para responder dúvidas. |
-| `app/calculo/` | Aplica regras determinísticas de elegibilidade e cálculo. |
-| `app/rag/` | Combina recuperação densa, BM25, busca por dispositivo e reranqueamento. |
-| `app/guardrails/` | Detecta solicitações sobre terceiros e sanitiza dados sensíveis. |
-| `mcp/` | Simula a integração externa com a operadora. |
-| `ingest/` | Extrai a base documental e reconstrói os índices persistidos. |
+| `app/main.py` | Exposes the HTTP API and validates requests. |
+| `app/agents/supervisor/` | Preserves session state, coordinates handoffs, and consolidates responses. |
+| `app/agents/triagem/` | Validates membership IDs and queries member data and history through MCP. |
+| `app/agents/documento/` | Classifies attachments and extracts the required fields. |
+| `app/agents/normas/` | Retrieves policy evidence for coverage and reimbursement questions. |
+| `app/calculo/` | Applies deterministic eligibility and financial rules. |
+| `app/rag/` | Combines vector retrieval, BM25, exact rule lookup, and reranking. |
+| `app/guardrails/` | Detects third-party requests and sanitizes sensitive data. |
+| `mcp/` | Simulates the external healthcare provider integration. |
+| `ingest/` | Extracts the knowledge base and rebuilds persisted indexes. |
 
-## Tecnologias
+## Tech stack
 
-| Área | Tecnologias |
+| Area | Technologies |
 |---|---|
-| Linguagem e API | Python 3.11, FastAPI, Uvicorn, Pydantic |
-| Agentes | LangGraph, LangChain |
-| IA generativa | Gemini 2.5 Flash Lite por gateway compatível |
-| RAG | LlamaIndex, vector store embarcado, BM25 |
-| Documentos | PyMuPDF, Pillow, Tesseract OCR, python-docx |
-| Integração | Model Context Protocol (MCP), HTTPX |
-| Qualidade | pytest, unittest, configuração Pyright |
-| Infraestrutura | Docker, Docker Compose |
+| Language and API | Python 3.11, FastAPI, Uvicorn, Pydantic |
+| Agents | LangGraph, LangChain |
+| Generative AI | Gemini 2.5 Flash Lite through a compatible gateway |
+| Retrieval | LlamaIndex, embedded vector store, BM25, RRF |
+| Documents | PyMuPDF, Pillow, Tesseract OCR, python-docx |
+| Integration | Model Context Protocol, HTTPX |
+| Quality | pytest, unittest, Pyright configuration |
+| Infrastructure | Docker, Docker Compose |
 
-As versões usadas estão fixadas em `requirements.txt` e `mcp/requirements.txt` para tornar a instalação reproduzível.
+Dependency versions are pinned in `requirements.txt` and `mcp/requirements.txt` for reproducible installation.
 
-## Estrutura do repositório
+## Repository structure
 
 ```text
 .
-├── app/                 # API, grafo, agentes, RAG, cálculo e guardrails
-├── ingest/              # pipeline de ingestão e construção do índice
-├── kb/                  # base normativa usada pelo RAG
-├── storage/             # índices persistidos carregados pela aplicação
-├── mcp/                 # servidor MCP local da operadora
-├── casos_treino/        # conversas e resultados esperados fictícios
-├── anexos/treino/       # documentos fictícios usados nos cenários
-├── avaliacao/           # utilitários do simulador de conversas
-├── tests/               # testes unitários, de contrato e de integração local
+├── app/                 # API, graph, agents, RAG, rules engine, and guardrails
+├── ingest/              # ingestion and index construction pipeline
+├── kb/                  # policy knowledge base used by RAG
+├── storage/             # persisted indexes loaded by the application
+├── mcp/                 # local healthcare provider MCP server
+├── casos_treino/        # synthetic conversations and expected outcomes
+├── anexos/treino/       # synthetic documents used by the scenarios
+├── avaliacao/           # conversation simulation utilities
+├── tests/               # unit, contract, and local integration tests
 ├── Dockerfile
 └── docker-compose.yml
 ```
 
-## Pré-requisitos
+## Prerequisites
 
 - Python 3.11;
-- Docker e Docker Compose, para a execução recomendada;
-- credenciais válidas para o gateway configurado em `BOOTCAMP_LLM_ENDPOINT`;
-- Tesseract OCR e Poppler quando a aplicação for executada sem Docker.
+- Docker and Docker Compose for the recommended setup;
+- valid credentials for the gateway configured in `BOOTCAMP_LLM_ENDPOINT`;
+- Tesseract OCR and Poppler when running outside Docker.
 
-## Configuração
+## Configuration
 
-Crie o arquivo local de configuração a partir do exemplo:
+Create a local configuration file:
 
 ```bash
 cp .env.example .env
 ```
 
-No PowerShell:
+PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Preencha somente o `.env`. Ele é ignorado pelo Git e não deve ser publicado.
+Only place real credentials in `.env`. This file is ignored by Git and must never be published.
 
-| Variável | Obrigatória | Descrição |
+| Variable | Required | Description |
 |---|---:|---|
-| `BOOTCAMP_LLM_ENDPOINT` | Sim | URL-base do gateway de chat e embeddings. |
-| `BOOTCAMP_API_KEY` | Sim | Credencial do gateway. Trate como segredo. |
-| `MCP_OPERADORA_URL` | Sim | Endpoint HTTP do servidor MCP. |
-| `MCP_OPERADORA_TOKEN` | Localmente | Token do MCP; `treino` é apenas o valor do simulador local. |
+| `BOOTCAMP_LLM_ENDPOINT` | Yes | Base URL for the chat and embedding gateway. |
+| `BOOTCAMP_API_KEY` | Yes | Gateway credential. Treat it as a secret. |
+| `MCP_OPERADORA_URL` | Yes | HTTP endpoint for the MCP server. |
+| `MCP_OPERADORA_TOKEN` | Locally | MCP token; `treino` is only used by the local simulator. |
 
-## Como executar
+## Run with Docker Compose
 
-### Opção 1 — Docker Compose
-
-Com o `.env` configurado:
+With `.env` configured:
 
 ```bash
 docker compose up --build
 ```
 
-Os serviços ficam disponíveis em:
+Services:
 
 - API: `http://localhost:8000`;
-- documentação interativa: `http://localhost:8000/docs`;
-- MCP: `http://localhost:9000/mcp`.
+- interactive API documentation: `http://localhost:8000/docs`;
+- MCP server: `http://localhost:9000/mcp`.
 
-Verifique a aplicação:
+Health check:
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-Resposta esperada:
+Expected response:
 
 ```json
 {"status":"ok"}
 ```
 
-### Opção 2 — execução local
+## Run locally
 
-Crie e ative o ambiente virtual:
+Create and activate a virtual environment:
 
 ```bash
 python3.11 -m venv .venv
@@ -161,7 +161,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-No PowerShell:
+PowerShell:
 
 ```powershell
 py -3.11 -m venv .venv
@@ -169,20 +169,20 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Para desenvolvimento e execução dos testes, instale também:
+Install development dependencies when running the test suite:
 
 ```bash
 python -m pip install -r requirements-dev.txt
 ```
 
-Em um terminal, suba o MCP a partir da raiz do projeto:
+Start the MCP server from the repository root:
 
 ```bash
 PYTHONPATH=mcp MCP_OPERADORA_DADOS=casos_treino MCP_OPERADORA_TOKEN=treino \
   python -m mcp_operadora.server
 ```
 
-Equivalente no PowerShell:
+PowerShell:
 
 ```powershell
 $env:PYTHONPATH = "mcp"
@@ -191,103 +191,100 @@ $env:MCP_OPERADORA_TOKEN = "treino"
 python -m mcp_operadora.server
 ```
 
-Em outro terminal, suba a API:
+In another terminal, start the API:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-## Uso da API
+## API
+
+The original Portuguese field names are preserved as part of the public API contract.
 
 ### `GET /health`
 
-Retorna o estado básico do serviço.
+Returns the basic service status.
 
 ### `POST /chat`
 
-Processa um turno e preserva o contexto pelo `session_id`:
+Processes one conversation turn and preserves context through `session_id`:
 
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "session_id": "exemplo-01",
-    "mensagem": "Quero solicitar um reembolso. Minha carteirinha é 7042 8813 5561 0029"
+    "session_id": "portfolio-demo",
+    "mensagem": "Quero solicitar um reembolso"
   }'
 ```
 
-Um anexo opcional usa o formato:
+Optional attachment structure:
 
 ```json
 {
-  "filename": "recibo.pdf",
+  "filename": "receipt.pdf",
   "mime_type": "application/pdf",
-  "base64": "<conteudo-em-base64>"
+  "base64": "<base64-encoded-content>"
 }
 ```
 
-A resposta inclui texto conversacional e, quando houver dados suficientes, categoria, decisão, valores, regras aplicadas, protocolo e pendências.
+Once enough information is available, the response includes a conversational message, document category, decision, requested amount, reimbursement amount, applied rules, protocol number, and pending requirements.
 
 ### `POST /reset`
 
-Remove os estados de conversa mantidos em memória:
+Clears all conversation states held in memory:
 
 ```bash
 curl -X POST http://localhost:8000/reset
 ```
 
-## Testes e validação
+## Tests
 
-Execute a suíte automatizada sem depender dos serviços externos:
+Run the automated suite without external services:
 
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Os testes cobrem o motor de cálculo, contratos da API, privacidade, cliente MCP, memória e roteamento do grafo, extração documental e recuperação híbrida.
+The tests cover the rules engine, API contracts, privacy, MCP client, graph memory and routing, document extraction, and hybrid retrieval.
 
-Para executar as conversas completas de treino, mantenha o MCP e a API ativos:
+Current result: **37 tests passing**.
+
+To run the complete synthetic conversations, keep both the MCP server and API running:
 
 ```bash
 python rodar_treino.py --roteiro-fixo
 python rodar_treino.py --caso 02 -v
 ```
 
-O avaliador conversacional também usa o gateway configurado no `.env`.
+The conversation evaluator also uses the gateway configured in `.env`.
 
-## Reconstrução da base RAG
+## Rebuild the RAG indexes
 
-O índice em `storage/` já acompanha o projeto. Reconstrua-o somente quando o conteúdo de `kb/` mudar:
+The persisted index in `storage/` is included in the project. Rebuild it only when the contents of `kb/` change:
 
 ```bash
 python -m ingest.build
 ```
 
-Esse processo usa o serviço de embeddings configurado no `.env`, persiste o vector store, o índice BM25, o catálogo de procedimentos e um manifesto com hashes das fontes.
+The pipeline uses the embedding service configured in `.env` and persists the vector store, BM25 index, procedure catalog, and a manifest containing source hashes.
 
-## Segurança e privacidade
+## Security
 
-- nunca adicione `.env`, chaves, tokens ou credenciais reais ao Git;
-- mantenha apenas placeholders em `.env.example`;
-- rotacione imediatamente qualquer segredo que tenha sido enviado a um commit ou compartilhado publicamente;
-- revise anexos e bases documentais antes de substituir os exemplos fictícios por novos arquivos;
-- em produção, substitua a memória em processo e o MCP de treino por serviços persistentes e controles de autenticação, autorização, auditoria e retenção adequados.
+- never commit `.env`, tokens, private keys, or real credentials;
+- keep only placeholders in `.env.example`;
+- rotate any secret that has been committed or shared publicly;
+- review attachments and knowledge-base documents before replacing the synthetic examples;
+- replace in-process memory and the local MCP simulator with persistent services, authentication, authorization, audit, and retention controls before production use.
 
-Antes do primeiro push, confirme que o arquivo de segredo continua ignorado:
+Confirm that the local secret file remains ignored before a push:
 
 ```bash
 git check-ignore -v .env
 git status --short
 ```
 
-## Limitações conhecidas
+## License
 
-- o estado das sessões usa `InMemorySaver` e é perdido ao reiniciar o processo;
-- o bloqueio do runtime prioriza consistência, não processamento paralelo de alto volume;
-- o MCP incluído é um simulador local com dados fictícios;
-- a execução completa depende de um gateway compatível para chat e embeddings.
-
-## Licença
-
-Distribuído sob a licença MIT. Consulte o arquivo [`LICENSE`](LICENSE).
+Distributed under the [MIT License](LICENSE).
